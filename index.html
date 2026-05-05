@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NASA EPIC Earth Gallery</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="stars"></div>
+    
+    <header class="site-header">
+        <div class="logo">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <h1>Earth Live Gallery</h1>
+        </div>
+        <p class="subtitle">Real-time imagery from NASA's EPIC Camera aboard DSCOVR</p>
+    </header>
+
+    <main class="main-content">
+        <div class="controls">
+            <div class="date-selector">
+                <label for="date-input">Select Date:</label>
+                <input type="date" id="date-input">
+                <button id="load-btn" class="btn-primary">Load Images</button>
+            </div>
+            <button id="latest-btn" class="btn-secondary">Get Latest</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="loading-spinner hidden" id="loader">
+                <div class="spinner"></div>
+                <span>Fetching data from NASA...</span>
+            </div>
+            <div class="error-message hidden" id="error"></div>
+            <div class="info-message" id="info"></div>
+        </div>
+
+        <div class="gallery" id="gallery"></div>
+    </main>
+
+    <div class="modal hidden" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" id="modal-close">&times;</button>
+            <div class="modal-image-container">
+                <img src="" alt="Earth" id="modal-image">
+            </div>
+            <div class="modal-details" id="modal-details"></div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <p>Data provided by <a href="https://epic.gsfc.nasa.gov/" target="_blank">NASA EPIC API</a> | Built with JS, HTML & CSS</p>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
