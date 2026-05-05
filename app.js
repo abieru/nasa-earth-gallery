@@ -68,7 +68,7 @@ async function loadLatest() {
     gallery.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE}/images?api_key=${NASA_API_KEY}`);
+        const response = await fetch(`${API_BASE}?api_key=${NASA_API_KEY}`);
         
         if (!response.ok) {
             if (response.status === 403) {
