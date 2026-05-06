@@ -64,6 +64,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_error(502, str(e))
         else:
+            # Try .html fallback for extensionless paths
+            original_path = self.path
+            file_path = REPO_ROOT / self.path.lstrip('/')
+            if '.' not in self.path.split('/')[-1] and not file_path.exists():
+                html_path = file_path.with_suffix('.html')
+                if html_path.exists():
+                    self.path = original_path + '.html'
             super().do_GET()
 
 if __name__ == '__main__':
