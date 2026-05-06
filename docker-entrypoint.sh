@@ -25,7 +25,7 @@ server {
     location / {
         root   /usr/share/nginx/html;
         index  index.html index.htm;
-        try_files $uri $uri.html $uri/ =404;
+        try_files \$uri \$uri.html \$uri/ =404;
     }
 
     location /proxy/ {
