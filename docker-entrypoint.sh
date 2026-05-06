@@ -28,6 +28,12 @@ server {
         try_files $uri $uri.html $uri/ =404;
     }
 
+    location /proxy/ {
+        proxy_pass https://epic.gsfc.nasa.gov/;
+        proxy_ssl_server_name on;
+        proxy_set_header Host epic.gsfc.nasa.gov;
+    }
+
     error_page   500 502 503 504  /50x.html;
     location = /50x.html {
         root   /usr/share/nginx/html;
