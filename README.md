@@ -14,6 +14,10 @@ A static HTML/CSS/JS app that displays real Earth imagery from NASA's EPIC (Eart
 
 ## Run Locally
 
+### Gallery page only
+
+Any static file server works for the main gallery page:
+
 **Python:**
 ```bash
 python -m http.server 8080
@@ -25,6 +29,22 @@ npx serve . -p 8080
 ```
 
 Then open [http://localhost:8080](http://localhost:8080)
+
+### 3D viewer page (`earth3d.html`)
+
+The 3D viewer loads NASA EPIC images as WebGL textures. NASA's image archive server (`epic.gsfc.nasa.gov`) does **not** send CORS headers, so a same-origin proxy is required for the textures to load.
+
+**Plain static servers like `npx serve` or `python -m http.server` will NOT work** for the 3D page because they cannot proxy the image requests.
+
+Use the included Python dev server which serves static files **and** proxies `/proxy/` to NASA:
+
+```bash
+python dev-server.py 8080
+```
+
+Then open [http://localhost:8080/earth3d.html](http://localhost:8080/earth3d.html)
+
+> **Note:** If you use a plain static server for the 3D page, image textures will not load because the browser blocks cross-origin WebGL textures without CORS. Use `dev-server.py` for local 3D development, or use Docker (which has the proxy built into nginx).
 
 ## Docker
 

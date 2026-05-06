@@ -4,6 +4,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const API_BASE = 'https://api.nasa.gov/EPIC/api/natural';
 const IMG_BASE = 'https://epic.gsfc.nasa.gov/archive/natural';
 
+const PROXY_URLS = [
+    '/proxy/',                       // dev-server.py / Docker
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+];
+
 // DOM Elements
 const canvasContainer = document.getElementById('canvas-container');
 const dateInput = document.getElementById('date-input');
@@ -21,6 +27,7 @@ let currentTextureIndex = 0;
 let isPlaying = false;
 let playInterval = null;
 const textureLoader = new THREE.TextureLoader();
+textureLoader.crossOrigin = 'anonymous';
 
 // Initialize
 function init() {
@@ -235,6 +242,35 @@ function getImageUrl(date, imageName, type = 'png') {
     return `${IMG_BASE}/${year}/${month}/${day}/${type}/${imageName}.${ext}`;
 }
 
+function getProxiedImageUrl(date, imageName, proxy) {
+    const baseUrl = getImageUrl(date, imageName, 'png');
+    if (proxy === '/proxy/') {
+        return baseUrl.replace('https://epic.gsfc.nasa.gov/', '/proxy/');
+    }
+    return proxy + encodeURIComponent(baseUrl);
+}
+
+function loadTextureWithTimeout(url) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            reject(new Error('Texture load timeout'));
+        }, 10000);
+
+        textureLoader.load(
+            url,
+            (texture) => {
+                clearTimeout(timeoutId);
+                resolve(texture);
+            },
+            undefined,
+            (err) => {
+                clearTimeout(timeoutId);
+                reject(err);
+            }
+        );
+    });
+}
+
 function loadTexture(index) {
     return new Promise((resolve, reject) => {
         if (!currentImages[index]) {
@@ -243,24 +279,32 @@ function loadTexture(index) {
         }
         const item = currentImages[index];
         const date = item.date.split(' ')[0];
-        const url = getImageUrl(date, item.image, 'png');
 
-        textureLoader.load(
-            url,
-            (texture) => {
+        const tryLoad = async (proxyIndex) => {
+            if (proxyIndex >= PROXY_URLS.length) {
+                showInfo(t('textureLoadError'));
+                reject(new Error('All proxies failed'));
+                return;
+            }
+
+            const proxy = PROXY_URLS[proxyIndex];
+            const url = getProxiedImageUrl(date, item.image, proxy);
+
+            try {
+                const texture = await loadTextureWithTimeout(url);
                 texture.colorSpace = THREE.SRGBColorSpace;
                 earthMesh.material.map = texture;
                 earthMesh.material.needsUpdate = true;
                 currentTextureIndex = index;
                 updateImageCounter();
                 resolve();
-            },
-            undefined,
-            (err) => {
-                console.error('Texture load error:', err);
-                reject(err);
+            } catch (err) {
+                console.warn(`Proxy ${proxy} failed for texture, trying next...`, err);
+                tryLoad(proxyIndex + 1);
             }
-        );
+        };
+
+        tryLoad(0);
     });
 }
 
