@@ -1,7 +1,7 @@
 # Session Resume: NASA Earth Gallery
 
 ## What We Built
-A static frontend app that fetches real Earth imagery from NASA's EPIC (DSCOVR) API and displays it in a dark-themed gallery with full metadata.
+A static frontend app that fetches real Earth imagery from NASA's EPIC (DSCOVR) API and displays it in a dark-themed gallery with full metadata, multilingual support, and optimized image loading.
 
 ## Tech Stack
 - HTML5, vanilla CSS, vanilla JavaScript
@@ -11,9 +11,12 @@ A static frontend app that fetches real Earth imagery from NASA's EPIC (DSCOVR) 
 ## Files Created
 ```
 C:\projetos\nasa\
-├── index.html          # App shell, layout, modal markup
-├── style.css           # Dark space theme, responsive grid, animations
+├── index.html          # App shell, layout, modal markup, language switcher
+├── earth3d.html        # Three.js 3D Earth viewer with timelapse
+├── earth3d.js          # WebGL scene, sphere texture, OrbitControls, timelapse
+├── style.css           # Dark space theme, responsive grid, animations, 3D viewer styles
 ├── app.js              # API logic, gallery rendering, modal interactivity
+├── i18n.js             # Translation dictionaries and i18n helpers
 ├── config.js           # NASA_API_KEY constant (user-provided real key, gitignored)
 ├── config.example.js   # Example config for new setups
 ├── .gitignore          # Excludes config.js
@@ -23,10 +26,15 @@ C:\projetos\nasa\
 ```
 
 ## Architecture
-- **Entry:** `index.html` loads `config.js` → `style.css` → `app.js`
+- **Entry (Gallery):** `index.html` loads `config.js` → `i18n.js` → `app.js` + `style.css`
+- **Entry (3D):** `earth3d.html` loads `config.js` → `i18n.js` → `earth3d.js` (ES module) + `style.css`
+- **Navigation:** Shared header nav switches between Gallery (`index.html`) and 3D Earth (`earth3d.html`)
 - **API calls:** `https://api.nasa.gov/EPIC/api/natural?api_key={KEY}` (latest) or `/date/{YYYY-MM-DD}?api_key={KEY}` (historical)
-- **Image URLs:** Manually constructed from API response into `https://epic.gsfc.nasa.gov/archive/natural/{YYYY}/{MM}/{DD}/png/{IMAGE}.png`
-- **State:** Single `currentData` array in `app.js`; no external state management
+- **Image URLs:** Manually constructed from API response. Supports three formats:
+  - `png` — Full resolution (2048x2048), used in modal and 3D sphere texture
+  - `jpg` — Half resolution
+  - `thumbs` — Thumbnails, used in gallery grid for fast loading
+- **State:** `currentData` in `app.js`; `currentImages` in `earth3d.js`; language preference stored in `localStorage`
 
 ## Current Status
 - All core features implemented
@@ -35,6 +43,9 @@ C:\projetos\nasa\
 - GitHub repo created and pushed: `https://github.com/abieru/nasa-earth-gallery`
 - Supports latest batch + date picker for historical images
 - Modal shows full metadata: `centroid_coordinates`, `dscovr_j2000_position`, `sun_j2000_position`, caption
+- **i18n:** Full translations for English (`en`), Spanish Venezuela (`es-VE`), and Portuguese Brazil (`pt-BR`)
+- **Performance:** Gallery uses thumbnails; modal loads full PNG with a smooth loading spinner
+- **3D Viewer:** Interactive Three.js globe with real EPIC textures, draggable orbit, auto-rotation, atmosphere glow, starfield background, and timelapse playback
 
 ## Bug Fixes
 - **NASA API endpoint changed:** `/EPIC/api/natural/images` returned 404. Fixed to use `/EPIC/api/natural` (root endpoint) for latest images. Date endpoint unchanged.
@@ -69,6 +80,10 @@ C:\projetos\nasa\
 - Create `README.md` with setup instructions.
 - Fix "Get Latest" button (NASA API endpoint change).
 - Access app from phone on local network.
+- Add Spanish (Venezuela) and Portuguese (Brazil) translations.
+- Use thumbnails in gallery for faster loading; full PNG in modal.
+- Add loading spinner inside modal for smoother UX.
+- Add interactive 3D Earth viewer page with Three.js, draggable globe, and timelapse playback from EPIC images.
 
 ## No Pending Blockers
 All requested features are complete and functional.

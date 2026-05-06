@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NASA EPIC Earth Gallery</title>
+    <title data-i18n="title">NASA EPIC Earth Gallery</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -16,25 +16,36 @@
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
-            <h1>Earth Live Gallery</h1>
+            <h1 data-i18n="logo">Earth Live Gallery</h1>
         </div>
-        <p class="subtitle">Real-time imagery from NASA's EPIC Camera aboard DSCOVR</p>
+        <p class="subtitle" data-i18n="subtitle">Real-time imagery from NASA's EPIC Camera aboard DSCOVR</p>
+        <div class="lang-switcher">
+            <select id="lang-select">
+                <option value="en">🇺🇸 English</option>
+                <option value="es-VE">🇻🇪 Español</option>
+                <option value="pt-BR">🇧🇷 Português</option>
+            </select>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link active" data-i18n="viewGallery">Gallery</a>
+            <a href="earth3d.html" class="nav-link" data-i18n="view3d">3D Earth</a>
+        </nav>
     </header>
 
     <main class="main-content">
         <div class="controls">
             <div class="date-selector">
-                <label for="date-input">Select Date:</label>
+                <label for="date-input" data-i18n="selectDate">Select Date:</label>
                 <input type="date" id="date-input">
-                <button id="load-btn" class="btn-primary">Load Images</button>
+                <button id="load-btn" class="btn-primary" data-i18n="loadImages">Load Images</button>
             </div>
-            <button id="latest-btn" class="btn-secondary">Get Latest</button>
+            <button id="latest-btn" class="btn-secondary" data-i18n="getLatest">Get Latest</button>
         </div>
 
         <div class="status-bar">
             <div class="loading-spinner hidden" id="loader">
                 <div class="spinner"></div>
-                <span>Fetching data from NASA...</span>
+                <span data-i18n="loading">Fetching data from NASA...</span>
             </div>
             <div class="error-message hidden" id="error"></div>
             <div class="info-message" id="info"></div>
@@ -43,10 +54,14 @@
         <div class="gallery" id="gallery"></div>
     </main>
 
-    <div class="modal hidden" id="modal">
+    <div class="modal hidden" id="modal" data-index="">
         <div class="modal-content">
             <button class="modal-close" id="modal-close">&times;</button>
             <div class="modal-image-container">
+                <div class="modal-image-loader" id="modal-loader">
+                    <div class="spinner"></div>
+                    <span data-i18n="loadingImage">Loading image...</span>
+                </div>
                 <img src="" alt="Earth" id="modal-image">
             </div>
             <div class="modal-details" id="modal-details"></div>
@@ -54,10 +69,11 @@
     </div>
 
     <footer class="site-footer">
-        <p>Data provided by <a href="https://epic.gsfc.nasa.gov/" target="_blank">NASA EPIC API</a> | Built with JS, HTML & CSS</p>
+        <p data-i18n="footer">Data provided by <a href="https://epic.gsfc.nasa.gov/" target="_blank">NASA EPIC API</a> | Built with JS, HTML & CSS</p>
     </footer>
 
     <script src="config.js"></script>
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

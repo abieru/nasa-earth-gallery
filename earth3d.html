@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="title3d">NASA EPIC 3D Earth</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body class="page-3d">
+    <div class="stars"></div>
+
+    <header class="site-header">
+        <div class="logo">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <h1 data-i18n="logo">Earth Live Gallery</h1>
+        </div>
+        <p class="subtitle" data-i18n="subtitle3d">Interactive 3D globe with real NASA EPIC imagery</p>
+        <div class="lang-switcher">
+            <select id="lang-select">
+                <option value="en">🇺🇸 English</option>
+                <option value="es-VE">🇻🇪 Español</option>
+                <option value="pt-BR">🇧🇷 Português</option>
+            </select>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link" data-i18n="viewGallery">Gallery</a>
+            <a href="earth3d.html" class="nav-link active" data-i18n="view3d">3D Earth</a>
+        </nav>
+    </header>
+
+    <main class="main-content main-content-3d">
+        <div class="viewer-3d">
+            <div class="viewer-3d-controls">
+                <div class="date-selector">
+                    <label for="date-input" data-i18n="selectDate">Select Date:</label>
+                    <input type="date" id="date-input">
+                    <button id="load-btn" class="btn-primary" data-i18n="loadImages">Load Images</button>
+                </div>
+                <div class="timelapse-controls">
+                    <button id="play-btn" class="btn-secondary" data-i18n="playTimelapse">Play Timelapse</button>
+                    <div class="speed-control">
+                        <label for="speed-slider" data-i18n="timelapseSpeed">Speed</label>
+                        <input type="range" id="speed-slider" min="1" max="100" value="50">
+                    </div>
+                    <span class="image-counter" id="image-counter">0 / 0</span>
+                </div>
+                <div class="texture-loader hidden" id="texture-loader">
+                    <div class="spinner"></div>
+                    <span data-i18n="loadingTexture">Loading texture...</span>
+                </div>
+                <div class="info-message hidden" id="info"></div>
+            </div>
+            <div class="canvas-container" id="canvas-container"></div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <p data-i18n="footer">Data provided by <a href="https://epic.gsfc.nasa.gov/" target="_blank">NASA EPIC API</a> | Built with JS, HTML & CSS</p>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="i18n.js"></script>
+    <script type="module" src="earth3d.js"></script>
+</body>
+</html>
