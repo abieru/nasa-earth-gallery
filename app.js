@@ -13,6 +13,7 @@ const modal = document.getElementById('modal');
 const modalClose = document.getElementById('modal-close');
 const modalImage = document.getElementById('modal-image');
 const modalDetails = document.getElementById('modal-details');
+const modalLoader = document.getElementById('modal-loader');
 
 // State
 let currentData = [];
@@ -23,6 +24,14 @@ function init() {
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
     dateInput.max = today;
+    
+    // Language switcher
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect) {
+        langSelect.value = currentLang;
+        langSelect.addEventListener('change', (e) => setLang(e.target.value));
+    }
+    updatePageText();
     
     // Load latest images
     loadLatest();
@@ -36,6 +45,12 @@ function init() {
     });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
+    });
+    
+    // Modal image load handler
+    modalImage.addEventListener('load', () => {
+        modalLoader.classList.add('hidden');
+        modalImage.classList.remove('hidden');
     });
 }
 
@@ -72,15 +87,15 @@ async function loadLatest() {
         
         if (!response.ok) {
             if (response.status === 403) {
-                throw new Error('Invalid API Key. Please check your NASA API key in config.js');
+                throw new Error(t('invalidApiKey'));
             }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(t('httpError', { status: response.status }));
         }
         
         const data = await response.json();
         
         if (data.length === 0) {
-            showInfo('No images available for the latest date. Try selecting an earlier date.');
+            showInfo(t('noImagesLatest'));
             hideLoader();
             return;
         }
@@ -89,13 +104,13 @@ async function loadLatest() {
         renderGallery(data);
         
         const date = data[0].date.split(' ')[0];
-        showInfo(`Showing ${data.length} images from ${formatDate(date)}`);
+        showInfo(t('showingImages', { count: data.length, date: formatDate(date) }));
         
         // Update date input to match
         dateInput.value = date;
         
     } catch (error) {
-        showError(error.message || 'Failed to fetch data from NASA API');
+        showError(error.message || t('fetchError'));
         console.error('Error:', error);
     }
     
@@ -105,7 +120,7 @@ async function loadLatest() {
 // Fetch images by specific date
 async function loadByDate(date) {
     if (!date) {
-        showError('Please select a date');
+        showError(t('selectDateError'));
         return;
     }
     
@@ -117,25 +132,25 @@ async function loadByDate(date) {
         
         if (!response.ok) {
             if (response.status === 403) {
-                throw new Error('Invalid API Key. Please check your NASA API key in config.js');
+                throw new Error(t('invalidApiKey'));
             }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(t('httpError', { status: response.status }));
         }
         
         const data = await response.json();
         
         if (data.length === 0) {
-            showInfo(`No images available for ${formatDate(date)}. Try another date.`);
+            showInfo(t('noImagesDate', { date: formatDate(date) }));
             hideLoader();
             return;
         }
         
         currentData = data;
         renderGallery(data);
-        showInfo(`Showing ${data.length} images from ${formatDate(date)}`);
+        showInfo(t('showingImages', { count: data.length, date: formatDate(date) }));
         
     } catch (error) {
-        showError(error.message || 'Failed to fetch data from NASA API');
+        showError(error.message || t('fetchError'));
         console.error('Error:', error);
     }
     
@@ -143,21 +158,23 @@ async function loadByDate(date) {
 }
 
 // Construct image URL
-function getImageUrl(date, imageName) {
+// type: 'png' | 'jpg' | 'thumbs' (default: 'png')
+function getImageUrl(date, imageName, type = 'png') {
     const [year, month, day] = date.split('-');
-    return `${IMG_BASE}/${year}/${month}/${day}/png/${imageName}.png`;
+    const ext = type === 'thumbs' ? 'jpg' : type;
+    return `${IMG_BASE}/${year}/${month}/${day}/${type}/${imageName}.${ext}`;
 }
 
 // Format date nicely
 function formatDate(dateStr) {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', options);
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(getLocale(), options);
 }
 
 // Format time
 function formatTime(dateStr) {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', { 
+    return date.toLocaleTimeString(getLocale(), { 
         hour: '2-digit', 
         minute: '2-digit', 
         second: '2-digit',
@@ -169,15 +186,15 @@ function formatTime(dateStr) {
 function renderGallery(data) {
     gallery.innerHTML = data.map((item, index) => {
         const date = item.date.split(' ')[0];
-        const imageUrl = getImageUrl(date, item.image);
+        const imageUrl = getImageUrl(date, item.image, 'thumbs');
         const coords = item.centroid_coordinates;
-        const lat = coords ? coords.lat.toFixed(2) : 'N/A';
-        const lon = coords ? coords.lon.toFixed(2) : 'N/A';
+        const lat = coords ? coords.lat.toFixed(2) : t('na');
+        const lon = coords ? coords.lon.toFixed(2) : t('na');
         
         return `
             <div class="gallery-item" data-index="${index}">
                 <div class="gallery-image">
-                    <img src="${imageUrl}" alt="Earth from DSCOVR" loading="lazy">
+                    <img src="${imageUrl}" alt="${t('altText')}" loading="lazy">
                 </div>
                 <div class="gallery-info">
                     <h3>${formatTime(item.date)}</h3>
@@ -225,60 +242,65 @@ function openModal(index) {
     const sun = item.sun_j2000_position || {};
     const lunar = item.lunar_j2000_position || {};
     
+    modalImage.alt = t('modalAltText', { date: item.date });
+    modal.dataset.index = index;
+    
+    // Show loader, hide image until loaded
+    modalLoader.classList.remove('hidden');
+    modalImage.classList.add('hidden');
     modalImage.src = imageUrl;
-    modalImage.alt = `Earth captured by DSCOVR on ${item.date}`;
     
     modalDetails.innerHTML = `
-        <h2>Image Details</h2>
+        <h2>${t('imageDetails')}</h2>
         
         <div class="detail-grid">
             <div class="detail-item">
-                <div class="detail-label">Date</div>
+                <div class="detail-label">${t('date')}</div>
                 <div class="detail-value">${formatDate(date)}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Time (UTC)</div>
+                <div class="detail-label">${t('timeUTC')}</div>
                 <div class="detail-value">${formatTime(item.date)}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Image Identifier</div>
+                <div class="detail-label">${t('imageIdentifier')}</div>
                 <div class="detail-value">${item.image}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Version</div>
-                <div class="detail-value">${item.version || 'N/A'}</div>
+                <div class="detail-label">${t('version')}</div>
+                <div class="detail-value">${item.version || t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Centroid Latitude</div>
-                <div class="detail-value">${coords.lat ? coords.lat.toFixed(4) + '°' : 'N/A'}</div>
+                <div class="detail-label">${t('centroidLatitude')}</div>
+                <div class="detail-value">${coords.lat ? coords.lat.toFixed(4) + '°' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Centroid Longitude</div>
-                <div class="detail-value">${coords.lon ? coords.lon.toFixed(4) + '°' : 'N/A'}</div>
+                <div class="detail-label">${t('centroidLongitude')}</div>
+                <div class="detail-value">${coords.lon ? coords.lon.toFixed(4) + '°' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">DSCOVR X Position</div>
-                <div class="detail-value">${dscovr.x ? dscovr.x.toFixed(2) + ' km' : 'N/A'}</div>
+                <div class="detail-label">${t('dscovrX')}</div>
+                <div class="detail-value">${dscovr.x ? dscovr.x.toFixed(2) + ' km' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">DSCOVR Y Position</div>
-                <div class="detail-value">${dscovr.y ? dscovr.y.toFixed(2) + ' km' : 'N/A'}</div>
+                <div class="detail-label">${t('dscovrY')}</div>
+                <div class="detail-value">${dscovr.y ? dscovr.y.toFixed(2) + ' km' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">DSCOVR Z Position</div>
-                <div class="detail-value">${dscovr.z ? dscovr.z.toFixed(2) + ' km' : 'N/A'}</div>
+                <div class="detail-label">${t('dscovrZ')}</div>
+                <div class="detail-value">${dscovr.z ? dscovr.z.toFixed(2) + ' km' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Sun X Position</div>
-                <div class="detail-value">${sun.x ? sun.x.toFixed(2) + ' km' : 'N/A'}</div>
+                <div class="detail-label">${t('sunX')}</div>
+                <div class="detail-value">${sun.x ? sun.x.toFixed(2) + ' km' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Sun Y Position</div>
-                <div class="detail-value">${sun.y ? sun.y.toFixed(2) + ' km' : 'N/A'}</div>
+                <div class="detail-label">${t('sunY')}</div>
+                <div class="detail-value">${sun.y ? sun.y.toFixed(2) + ' km' : t('na')}</div>
             </div>
             <div class="detail-item">
-                <div class="detail-label">Sun Z Position</div>
-                <div class="detail-value">${sun.z ? sun.z.toFixed(2) + ' km' : 'N/A'}</div>
+                <div class="detail-label">${t('sunZ')}</div>
+                <div class="detail-value">${sun.z ? sun.z.toFixed(2) + ' km' : t('na')}</div>
             </div>
         </div>
         
@@ -294,6 +316,8 @@ function closeModal() {
     modal.classList.add('hidden');
     document.body.style.overflow = '';
     modalImage.src = '';
+    modalLoader.classList.add('hidden');
+    modalImage.classList.remove('hidden');
 }
 
 // Start the app
