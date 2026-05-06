@@ -66,12 +66,42 @@ function init() {
     sunLight.position.set(5, 3, 5);
     scene.add(sunLight);
 
-    // Earth Sphere
+    // Earth Sphere with full-disc projection shader
     const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
-    const earthMaterial = new THREE.MeshStandardMaterial({
-        map: null,
-        roughness: 0.6,
-        metalness: 0.1,
+    const earthMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            map: { value: null },
+        },
+        vertexShader: `
+            varying vec3 vNormal;
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform sampler2D map;
+            varying vec3 vNormal;
+
+            void main() {
+                vec3 n = normalize(vNormal);
+                float viewDot = dot(n, vec3(0.0, 0.0, 1.0));
+
+                if (viewDot > 0.0) {
+                    // Orthographic disc projection: map hemisphere XY to UV [0,1]
+                    vec2 uv = n.xy * 0.5 + 0.5;
+                    vec4 texColor = texture2D(map, uv);
+
+                    // Smooth terminator fade to night side
+                    float terminator = smoothstep(0.0, 0.2, viewDot);
+                    vec3 nightColor = vec3(0.0, 0.01, 0.03);
+                    gl_FragColor = vec4(mix(nightColor, texColor.rgb, terminator), 1.0);
+                } else {
+                    // Dark night side
+                    gl_FragColor = vec4(0.0, 0.01, 0.03, 1.0);
+                }
+            }
+        `,
     });
     earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earthMesh);
@@ -288,8 +318,7 @@ function loadTexture(index) {
             try {
                 const texture = await loadTextureWithTimeout(url);
                 texture.colorSpace = THREE.SRGBColorSpace;
-                earthMesh.material.map = texture;
-                earthMesh.material.needsUpdate = true;
+                earthMesh.material.uniforms.map.value = texture;
                 currentTextureIndex = index;
                 updateImageCounter();
                 resolve();
