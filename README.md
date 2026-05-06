@@ -28,20 +28,14 @@ Then open [http://localhost:8080](http://localhost:8080)
 
 ## Docker
 
-You can also run the app inside a Docker container. The container uses `nginx:alpine` to serve the static files.
+You can run the app inside a Docker container. The container uses `nginx:alpine` to serve the static files.
 
-### Build
+### Quick Start (Pre-built Image)
 
-```bash
-docker build -t nasa-epic .
-```
-
-### Run
-
-Pass your NASA API key and the desired internal port via environment variables, then map the container port to your host.
+No need to clone or build. Just run the image directly from GitHub Container Registry:
 
 ```bash
-docker run -e NASA_API_KEY=your_key_here -e PORT=8080 -p 8080:8080 nasa-epic
+docker run -e NASA_API_KEY=your_key_here -e PORT=8080 -p 8080:8080 ghcr.io/abieru/nasa-earth-gallery:latest
 ```
 
 | Variable | Required | Default | Description |
@@ -50,6 +44,15 @@ docker run -e NASA_API_KEY=your_key_here -e PORT=8080 -p 8080:8080 nasa-epic
 | `PORT` | No | `80` | Internal port nginx listens on |
 
 The entrypoint script injects `NASA_API_KEY` into `config.js` at startup, so your key is **never baked into the image**.
+
+### Build Locally
+
+If you prefer to build the image yourself:
+
+```bash
+docker build -t nasa-epic .
+docker run -e NASA_API_KEY=your_key_here -e PORT=8080 -p 8080:8080 nasa-epic
+```
 
 ## Features
 
