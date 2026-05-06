@@ -238,19 +238,6 @@ body::before {
     flex-wrap: wrap;
 }
 
-.speed-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.speed-control input[type="range"] {
-    width: 100px;
-    accent-color: var(--accent);
-}
-
 .image-counter {
     font-family: 'Space Grotesk', monospace;
     font-weight: 600;

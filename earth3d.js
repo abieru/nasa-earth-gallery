@@ -15,7 +15,7 @@ const canvasContainer = document.getElementById('canvas-container');
 const dateInput = document.getElementById('date-input');
 const loadBtn = document.getElementById('load-btn');
 const playBtn = document.getElementById('play-btn');
-const speedSlider = document.getElementById('speed-slider');
+
 const imageCounter = document.getElementById('image-counter');
 const textureLoaderEl = document.getElementById('texture-loader');
 const infoDiv = document.getElementById('info');
@@ -107,12 +107,7 @@ function init() {
     window.addEventListener('resize', onWindowResize);
     loadBtn.addEventListener('click', () => loadByDate(dateInput.value));
     playBtn.addEventListener('click', toggleTimelapse);
-    speedSlider.addEventListener('input', () => {
-        if (isPlaying) {
-            stopTimelapse();
-            startTimelapse();
-        }
-    });
+
 
     // Language
     const langSelect = document.getElementById('lang-select');
@@ -322,8 +317,7 @@ function startTimelapse() {
     controls.autoRotate = false;
     playBtn.textContent = t('pauseTimelapse');
 
-    const speed = parseInt(speedSlider.value);
-    const interval = Math.max(200, 1200 - speed * 10);
+    const interval = 800;
 
     playInterval = setInterval(async () => {
         let nextIndex = currentTextureIndex + 1;
