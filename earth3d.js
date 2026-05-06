@@ -185,7 +185,7 @@ async function loadLatest() {
             showInfo(t('noImages3d'));
             return;
         }
-        currentImages = data;
+        currentImages = data.slice(0, 4);
         currentTextureIndex = 0;
         updateImageCounter();
         await loadAllTextures();
@@ -218,7 +218,7 @@ async function loadByDate(date) {
             showInfo(t('noImages3d'));
             return;
         }
-        currentImages = data;
+        currentImages = data.slice(0, 4);
         currentTextureIndex = 0;
         updateImageCounter();
         await loadAllTextures();
@@ -307,16 +307,22 @@ function generateWorldTexture(textures, imagesData) {
 
     const maxRadius = H * 0.48;
 
+    // Distribute up to 4 images like cube faces on the sphere surface
+    const positions = [
+        { x: 0.50, y: 0.50 }, // front
+        { x: 0.75, y: 0.50 }, // right
+        { x: 0.25, y: 0.50 }, // left
+        { x: 0.50, y: 0.25 }, // top
+    ];
+
     imagesData.forEach((item, i) => {
         const texture = textures[i];
         const img = texture?.image;
         if (!img) return;
 
-        const lon = item.centroid_coordinates?.lon ?? 0;
-        const lat = item.centroid_coordinates?.lat ?? 0;
-
-        const cx = ((lon + 180) / 360) * W;
-        const cy = ((-lat + 90) / 180) * H;
+        const pos = positions[i] || positions[0];
+        const cx = pos.x * W;
+        const cy = pos.y * H;
 
         const size = Math.round(maxRadius * 2);
         const tempCanvas = document.createElement('canvas');
