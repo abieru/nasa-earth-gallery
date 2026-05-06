@@ -52,13 +52,20 @@
                     <button id="play-btn" class="btn-secondary" data-i18n="playTimelapse">Play Timelapse</button>
                     <span class="image-counter" id="image-counter">0 / 0</span>
                 </div>
-                <div class="texture-loader hidden" id="texture-loader">
-                    <div class="spinner"></div>
-                    <span data-i18n="loadingTexture">Loading texture...</span>
-                </div>
                 <div class="info-message hidden" id="info"></div>
             </div>
-            <div class="canvas-container" id="canvas-container"></div>
+            <div class="canvas-container" id="canvas-container">
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="loading-content">
+                        <div class="spinner-large"></div>
+                        <p class="loading-text" data-i18n="loadingImages3d">Loading NASA EPIC images...</p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="progress-bar"></div>
+                        </div>
+                        <span class="progress-text" id="progress-text">0 / 4</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 

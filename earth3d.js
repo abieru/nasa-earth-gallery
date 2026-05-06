@@ -17,7 +17,9 @@ const loadBtn = document.getElementById('load-btn');
 const playBtn = document.getElementById('play-btn');
 
 const imageCounter = document.getElementById('image-counter');
-const textureLoaderEl = document.getElementById('texture-loader');
+const loadingOverlay = document.getElementById('loading-overlay');
+const progressBar = document.getElementById('progress-bar');
+const progressText = document.getElementById('progress-text');
 const infoDiv = document.getElementById('info');
 
 // State
@@ -56,6 +58,7 @@ function init() {
     controls.maxDistance = 10;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.5;
+    controls.enableZoom = false;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x333333);
@@ -106,6 +109,21 @@ function init() {
     window.addEventListener('resize', onWindowResize);
     loadBtn.addEventListener('click', () => loadByDate(dateInput.value));
     playBtn.addEventListener('click', toggleTimelapse);
+
+    renderer.domElement.addEventListener('wheel', (event) => {
+        if (!event.ctrlKey) return;
+
+        event.preventDefault();
+
+        const zoomSpeed = 0.05;
+        const distance = camera.position.distanceTo(controls.target);
+        const scale = event.deltaY > 0 ? 1 + zoomSpeed : 1 - zoomSpeed;
+        let newDistance = distance * scale;
+        newDistance = Math.max(controls.minDistance, Math.min(controls.maxDistance, newDistance));
+
+        const direction = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+        camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+    }, { passive: false });
 
 
     // Language
@@ -173,7 +191,7 @@ function animate() {
 }
 
 async function loadLatest() {
-    showTextureLoader(true);
+    showLoadingOverlay(true);
     hideInfo();
     try {
         const response = await fetch(`${API_BASE}?api_key=${NASA_API_KEY}`);
@@ -196,7 +214,7 @@ async function loadLatest() {
         console.error('Error loading latest:', error);
         showInfo(error.message || t('fetchError'));
     } finally {
-        showTextureLoader(false);
+        showLoadingOverlay(false);
     }
 }
 
@@ -205,7 +223,7 @@ async function loadByDate(date) {
         showInfo(t('selectDateError'));
         return;
     }
-    showTextureLoader(true);
+    showLoadingOverlay(true);
     hideInfo();
     stopTimelapse();
     try {
@@ -226,7 +244,7 @@ async function loadByDate(date) {
         console.error('Error loading date:', error);
         showInfo(error.message || t('fetchError'));
     } finally {
-        showTextureLoader(false);
+        showLoadingOverlay(false);
     }
 }
 
@@ -265,20 +283,33 @@ function loadTextureAsync(url) {
     });
 }
 
+async function loadTexturesWithProgress(urls, onProgress) {
+    let completed = 0;
+    return Promise.all(urls.map(url =>
+        loadTextureAsync(url).then(tex => {
+            completed++;
+            onProgress(completed, urls.length);
+            return tex;
+        })
+    ));
+}
+
 async function loadAllTextures() {
     if (currentImages.length === 0) return;
 
     const date = currentImages[0].date.split(' ')[0];
+    updateProgressBar(0, currentImages.length);
 
     // Try each proxy until one works for the whole batch
     let textures = null;
     for (const proxy of PROXY_URLS) {
         try {
             const urls = currentImages.map(item => getProxiedImageUrl(date, item.image, proxy));
-            textures = await Promise.all(urls.map(url => loadTextureAsync(url)));
+            textures = await loadTexturesWithProgress(urls, updateProgressBar);
             break; // Success
         } catch (err) {
             console.warn(`Proxy ${proxy} failed for batch load, trying next...`);
+            updateProgressBar(0, currentImages.length);
         }
     }
 
@@ -398,8 +429,17 @@ function updateImageCounter() {
     });
 }
 
-function showTextureLoader(show) {
-    textureLoaderEl.classList.toggle('hidden', !show);
+function showLoadingOverlay(show) {
+    loadingOverlay.classList.toggle('hidden', !show);
+}
+
+function updateProgressBar(current, total) {
+    if (progressBar) {
+        progressBar.style.width = `${(current / total) * 100}%`;
+    }
+    if (progressText) {
+        progressText.textContent = `${current} / ${total}`;
+    }
 }
 
 function showInfo(msg) {
