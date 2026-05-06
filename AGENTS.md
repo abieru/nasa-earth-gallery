@@ -9,7 +9,9 @@ Static frontend app (HTML/CSS/vanilla JS). No build system, no package manager, 
 - Get a free key at https://api.nasa.gov. Do not commit real keys.
 
 ## Running Locally
-Serve the repo root with any static file server:
+
+### Simple static server (Gallery page only)
+For the gallery page, any static file server works:
 
 ```bash
 python -m http.server 8080
@@ -18,6 +20,21 @@ npx serve .
 ```
 
 Then open `http://localhost:8080`.
+
+### Development server (3D viewer + Gallery)
+The 3D viewer loads NASA EPIC images as WebGL textures. NASA's image archive server (`epic.gsfc.nasa.gov`) does **not** send CORS headers, so a same-origin proxy is required for the textures to load.
+
+**Why `npx serve` doesn't work for 3D:** Plain static servers cannot proxy image requests. When Three.js tries to load a texture directly from `epic.gsfc.nasa.gov`, the browser blocks it due to missing `Access-Control-Allow-Origin` headers. The result is a gray/black sphere with no Earth texture.
+
+Use the included Python dev server which serves static files **and** proxies `/proxy/` to NASA:
+
+```bash
+python dev-server.py 8080
+```
+
+Then open `http://localhost:8080/earth3d.html`.
+
+> **Note:** Use `dev-server.py` for local 3D development, or use Docker (which has the proxy built into nginx). Plain static servers only work for the gallery page.
 
 ## Architecture
 - **Entry point:** `index.html`
