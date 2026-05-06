@@ -25,7 +25,6 @@ let scene, camera, renderer, controls, earthMesh, atmosphereMesh, stars;
 let currentImages = [];
 let currentTextureIndex = 0;
 let isPlaying = false;
-let playInterval = null;
 const textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = 'anonymous';
 
@@ -66,42 +65,12 @@ function init() {
     sunLight.position.set(5, 3, 5);
     scene.add(sunLight);
 
-    // Earth Sphere with full-disc projection shader
-    const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
-    const earthMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            map: { value: null },
-        },
-        vertexShader: `
-            varying vec3 vNormal;
-            void main() {
-                vNormal = normalize(normalMatrix * normal);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform sampler2D map;
-            varying vec3 vNormal;
-
-            void main() {
-                vec3 n = normalize(vNormal);
-                float viewDot = dot(n, vec3(0.0, 0.0, 1.0));
-
-                if (viewDot > 0.0) {
-                    // Orthographic disc projection: map hemisphere XY to UV [0,1]
-                    vec2 uv = n.xy * 0.5 + 0.5;
-                    vec4 texColor = texture2D(map, uv);
-
-                    // Smooth terminator fade to night side
-                    float terminator = smoothstep(0.0, 0.2, viewDot);
-                    vec3 nightColor = vec3(0.0, 0.01, 0.03);
-                    gl_FragColor = vec4(mix(nightColor, texColor.rgb, terminator), 1.0);
-                } else {
-                    // Dark night side
-                    gl_FragColor = vec4(0.0, 0.01, 0.03, 1.0);
-                }
-            }
-        `,
+    // Earth Sphere
+    const earthGeometry = new THREE.SphereGeometry(1, 128, 128);
+    const earthMaterial = new THREE.MeshStandardMaterial({
+        map: null,
+        roughness: 0.7,
+        metalness: 0.1,
     });
     earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earthMesh);
@@ -219,7 +188,7 @@ async function loadLatest() {
         currentImages = data;
         currentTextureIndex = 0;
         updateImageCounter();
-        await loadTexture(0);
+        await loadAllTextures();
 
         const date = data[0].date.split(' ')[0];
         dateInput.value = date;
@@ -252,7 +221,7 @@ async function loadByDate(date) {
         currentImages = data;
         currentTextureIndex = 0;
         updateImageCounter();
-        await loadTexture(0);
+        await loadAllTextures();
     } catch (error) {
         console.error('Error loading date:', error);
         showInfo(error.message || t('fetchError'));
@@ -275,11 +244,11 @@ function getProxiedImageUrl(date, imageName, proxy) {
     return proxy + encodeURIComponent(baseUrl);
 }
 
-function loadTextureWithTimeout(url) {
+function loadTextureAsync(url) {
     return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
             reject(new Error('Texture load timeout'));
-        }, 10000);
+        }, 15000);
 
         textureLoader.load(
             url,
@@ -296,40 +265,103 @@ function loadTextureWithTimeout(url) {
     });
 }
 
-function loadTexture(index) {
-    return new Promise((resolve, reject) => {
-        if (!currentImages[index]) {
-            resolve();
-            return;
+async function loadAllTextures() {
+    if (currentImages.length === 0) return;
+
+    const date = currentImages[0].date.split(' ')[0];
+
+    // Try each proxy until one works for the whole batch
+    let textures = null;
+    for (const proxy of PROXY_URLS) {
+        try {
+            const urls = currentImages.map(item => getProxiedImageUrl(date, item.image, proxy));
+            textures = await Promise.all(urls.map(url => loadTextureAsync(url)));
+            break; // Success
+        } catch (err) {
+            console.warn(`Proxy ${proxy} failed for batch load, trying next...`);
         }
-        const item = currentImages[index];
-        const date = item.date.split(' ')[0];
+    }
 
-        const tryLoad = async (proxyIndex) => {
-            if (proxyIndex >= PROXY_URLS.length) {
-                showInfo(t('textureLoadError'));
-                reject(new Error('All proxies failed'));
-                return;
+    if (!textures) {
+        showInfo(t('textureLoadError'));
+        return;
+    }
+
+    const worldTexture = generateWorldTexture(textures, currentImages);
+    worldTexture.colorSpace = THREE.SRGBColorSpace;
+    earthMesh.material.map = worldTexture;
+    earthMesh.material.needsUpdate = true;
+}
+
+function generateWorldTexture(textures, imagesData) {
+    const W = 2048;
+    const H = 1024;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    // Deep ocean background
+    ctx.fillStyle = '#000510';
+    ctx.fillRect(0, 0, W, H);
+
+    const maxRadius = H * 0.48;
+
+    imagesData.forEach((item, i) => {
+        const texture = textures[i];
+        const img = texture?.image;
+        if (!img) return;
+
+        const lon = item.centroid_coordinates?.lon ?? 0;
+        const lat = item.centroid_coordinates?.lat ?? 0;
+
+        const cx = ((lon + 180) / 360) * W;
+        const cy = ((-lat + 90) / 180) * H;
+
+        const size = Math.round(maxRadius * 2);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = size;
+        tempCanvas.height = size;
+        const tCtx = tempCanvas.getContext('2d');
+
+        // Draw scaled image centered
+        const scale = size / Math.max(img.width, img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        tCtx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+
+        // Make black background transparent
+        try {
+            const imageData = tCtx.getImageData(0, 0, size, size);
+            const data = imageData.data;
+            for (let j = 0; j < data.length; j += 4) {
+                if (data[j] + data[j + 1] + data[j + 2] < 45) {
+                    data[j + 3] = 0;
+                }
             }
+            tCtx.putImageData(imageData, 0, 0);
+        } catch (e) {
+            // Canvas may be tainted, skip transparency processing
+        }
 
-            const proxy = PROXY_URLS[proxyIndex];
-            const url = getProxiedImageUrl(date, item.image, proxy);
+        // Radial mask to soften edges
+        const r = size / 2;
+        const gradient = tCtx.createRadialGradient(r, r, r * 0.3, r, r, r);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(0.7, 'rgba(255,255,255,0.8)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        tCtx.globalCompositeOperation = 'destination-in';
+        tCtx.fillStyle = gradient;
+        tCtx.fillRect(0, 0, size, size);
+        tCtx.globalCompositeOperation = 'source-over';
 
-            try {
-                const texture = await loadTextureWithTimeout(url);
-                texture.colorSpace = THREE.SRGBColorSpace;
-                earthMesh.material.uniforms.map.value = texture;
-                currentTextureIndex = index;
-                updateImageCounter();
-                resolve();
-            } catch (err) {
-                console.warn(`Proxy ${proxy} failed for texture, trying next...`, err);
-                tryLoad(proxyIndex + 1);
-            }
-        };
-
-        tryLoad(0);
+        // Draw onto main canvas
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(tempCanvas, cx - r, cy - r);
+        ctx.globalAlpha = 1.0;
     });
+
+    return new THREE.CanvasTexture(canvas);
 }
 
 function toggleTimelapse() {
@@ -341,28 +373,16 @@ function toggleTimelapse() {
 }
 
 function startTimelapse() {
-    if (currentImages.length <= 1) return;
     isPlaying = true;
-    controls.autoRotate = false;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 2.0;
     playBtn.textContent = t('pauseTimelapse');
-
-    const interval = 800;
-
-    playInterval = setInterval(async () => {
-        let nextIndex = currentTextureIndex + 1;
-        if (nextIndex >= currentImages.length) nextIndex = 0;
-        await loadTexture(nextIndex);
-    }, interval);
 }
 
 function stopTimelapse() {
     isPlaying = false;
-    controls.autoRotate = true;
+    controls.autoRotate = false;
     playBtn.textContent = t('playTimelapse');
-    if (playInterval) {
-        clearInterval(playInterval);
-        playInterval = null;
-    }
 }
 
 function updateImageCounter() {
