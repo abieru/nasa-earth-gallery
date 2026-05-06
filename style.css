@@ -653,8 +653,23 @@ body {
         padding: 1.25rem;
     }
 
+    .page-3d {
+        overflow: auto;
+    }
+
     .main-content-3d {
-        height: calc(100vh - 240px);
+        height: auto;
+        min-height: unset;
+    }
+
+    .viewer-3d {
+        height: auto;
+    }
+
+    .canvas-container {
+        flex: none;
+        height: 50vh;
+        min-height: 300px;
     }
 
     .viewer-3d-controls {
