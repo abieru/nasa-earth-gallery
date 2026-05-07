@@ -262,9 +262,6 @@ function loadTextureAsync(url) {
         timeoutPromise,
     ]);
 }
-        );
-    });
-}
 
 function detectEarthRadius(srcData, imgW, imgH, cx, cy) {
     const threshold = 45;

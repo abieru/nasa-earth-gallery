@@ -640,7 +640,7 @@ body::before {
     background: rgba(10, 10, 26, 0.85);
     z-index: 1000;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 2rem;
     backdrop-filter: blur(15px);
@@ -656,6 +656,8 @@ body::before {
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
+    margin-top: auto;
+    margin-bottom: auto;
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 40px rgba(79, 195, 247, 0.1);
 }
 
