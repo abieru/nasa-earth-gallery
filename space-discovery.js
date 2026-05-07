@@ -6,8 +6,7 @@ let currentApodData = null;
 let apodHistory = [];
 
 // DOM Elements
-const dateInput = document.getElementById('apod-date-input');
-const loadBtn = document.getElementById('apod-load-btn');
+const todayBtn = document.getElementById('apod-today-btn');
 const randomBtn = document.getElementById('apod-random-btn');
 const loadingOverlay = document.getElementById('apod-loading-overlay');
 const infoDiv = document.getElementById('apod-info');
@@ -30,23 +29,13 @@ const modalClose = document.getElementById('apod-modal-close');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    // Set max date to today
-    const today = new Date().toISOString().split('T')[0];
-    dateInput.max = today;
-    dateInput.value = today;
-
-    // Load today's APOD and recent history
-    loadApod(today);
+    // Load latest APOD and recent history
+    loadLatestApod();
     loadApodHistory(12);
 
     // Event listeners
-    loadBtn.addEventListener('click', () => {
-        const date = dateInput.value;
-        if (date) {
-            loadApod(date);
-        } else {
-            showInfo(t('selectDateError'));
-        }
+    todayBtn.addEventListener('click', () => {
+        loadLatestApod();
     });
 
     randomBtn.addEventListener('click', () => {
@@ -72,16 +61,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-async function loadApod(date) {
+async function loadLatestApod() {
     showLoading(true);
     try {
-        const url = `${APOD_API_BASE}?api_key=${NASA_API_KEY}&date=${date}`;
-        const data = await cachedFetch(url, {}, 24 * 60 * 60 * 1000); // Cache for 24 hours
+        const url = `${APOD_API_BASE}?api_key=${NASA_API_KEY}`;
+        const response = await cachedFetch(url);
+        if (!response.ok) {
+            throw new Error(t('httpError', { status: response.status }));
+        }
+        const data = await response.json();
         currentApodData = data;
         renderFeaturedApod(data);
-        showInfo(t('showingApod', { date: formatDate(date) }));
+        showInfo(t('showingApod', { date: formatDate(data.date) }));
     } catch (error) {
-        console.error('Error loading APOD:', error);
+        console.error('Error loading latest APOD:', error);
         showInfo(error.message || t('fetchError'));
     } finally {
         showLoading(false);
@@ -92,10 +85,13 @@ async function loadRandomApod() {
     showLoading(true);
     try {
         const url = `${APOD_API_BASE}?api_key=${NASA_API_KEY}&count=1`;
-        const data = await cachedFetch(url, {}, 24 * 60 * 60 * 1000);
+        const response = await cachedFetch(url);
+        if (!response.ok) {
+            throw new Error(t('httpError', { status: response.status }));
+        }
+        const data = await response.json();
         const apod = Array.isArray(data) ? data[0] : data;
         currentApodData = apod;
-        dateInput.value = apod.date;
         renderFeaturedApod(apod);
         showInfo(t('showingApod', { date: formatDate(apod.date) }));
     } catch (error) {
@@ -109,7 +105,11 @@ async function loadRandomApod() {
 async function loadApodHistory(count) {
     try {
         const url = `${APOD_API_BASE}?api_key=${NASA_API_KEY}&count=${count}`;
-        const data = await cachedFetch(url, {}, 24 * 60 * 60 * 1000);
+        const response = await cachedFetch(url);
+        if (!response.ok) {
+            throw new Error(t('httpError', { status: response.status }));
+        }
+        const data = await response.json();
         apodHistory = Array.isArray(data) ? data : [data];
         renderApodGrid(apodHistory);
     } catch (error) {
