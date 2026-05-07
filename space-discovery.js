@@ -7,7 +7,6 @@ let apodHistory = [];
 
 // DOM Elements
 const todayBtn = document.getElementById('apod-today-btn');
-const randomBtn = document.getElementById('apod-random-btn');
 const loadingOverlay = document.getElementById('apod-loading-overlay');
 const infoDiv = document.getElementById('apod-info');
 const featuredSection = document.getElementById('apod-featured');
@@ -36,10 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listeners
     todayBtn.addEventListener('click', () => {
         loadLatestApod();
-    });
-
-    randomBtn.addEventListener('click', () => {
-        loadRandomApod();
     });
 
     modalClose.addEventListener('click', closeModal);
