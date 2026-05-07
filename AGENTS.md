@@ -73,3 +73,31 @@ docker run -e NASA_API_KEY=your_key_here -e PORT=8080 -p 8080:8080 nasa-epic
 | `PORT` | No | `80` | Internal port nginx listens on |
 
 The entrypoint script injects `NASA_API_KEY` into `config.js` at container startup, so the key is never baked into the image.
+
+## Chrome DevTools MCP (Agent Rules)
+
+When using the `chrome-devtools` MCP to debug or test the frontend:
+
+1. **Always open a new isolated Chrome instance.**
+   - Use a temporary profile directory: `--user-data-dir="$env:TEMP\chrome-mcp-<timestamp>"`.
+   - This prevents interference with any existing Chrome windows the user already has open.
+
+2. **Never kill existing Chrome processes.**
+   - **Do NOT** use `taskkill`, `Stop-Process`, `killall`, or any command that terminates Chrome.
+   - If the default debugging port `9222` is occupied, find an alternative free port instead of killing the process using it.
+
+3. **Use this PowerShell pattern to start Chrome on Windows:**
+   ```powershell
+   $port = 9222
+   # Check if port is in use; if so, increment until free
+   while ((Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue)) { $port++ }
+   $profile = "$env:TEMP\chrome-mcp-$(Get-Date -Format 'yyyyMMddHHmmss')"
+   New-Item -ItemType Directory -Path $profile -Force | Out-Null
+   Start-Process -FilePath "C:\Program Files\Google\Chrome\Application\chrome.exe" `
+       -ArgumentList "--remote-debugging-port=$port", "--no-first-run", "--no-default-browser-check", "--user-data-dir=$profile", "http://localhost:8080" `
+       -WindowStyle Hidden
+   ```
+
+4. **Connect the MCP to the new instance.**
+   - After starting Chrome, verify it's listening: `Invoke-RestMethod -Uri "http://localhost:$port/json/version"`.
+   - Use the returned WebSocket URL for subsequent `chrome-devtools` tool calls.
