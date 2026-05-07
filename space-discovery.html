@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="titleDiscovery">NASA Space Discovery</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="stars"></div>
+
+    <header class="site-header">
+        <div class="logo">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <h1 data-i18n="logo">Earth Live Gallery</h1>
+        </div>
+        <p class="subtitle" data-i18n="subtitleDiscovery">Explore the cosmos with NASA's Astronomy Picture of the Day</p>
+        <div class="lang-switcher">
+            <select id="lang-select">
+                <option value="en">🇺🇸 English</option>
+                <option value="es-VE">🇻🇪 Español</option>
+                <option value="pt-BR">🇧🇷 Português</option>
+            </select>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link" data-i18n="viewGallery">Gallery</a>
+            <a href="earth3d.html" class="nav-link" data-i18n="view3d">3D Earth</a>
+            <a href="space-discovery.html" class="nav-link active" data-i18n="viewDiscovery">Space Discovery</a>
+        </nav>
+    </header>
+
+    <main class="main-content">
+        <div class="controls">
+            <div class="date-selector">
+                <label for="apod-date-input" data-i18n="selectDate">Select Date:</label>
+                <input type="date" id="apod-date-input">
+                <button id="apod-load-btn" class="btn-primary" data-i18n="loadApod">Load APOD</button>
+            </div>
+            <button id="apod-random-btn" class="btn-secondary" data-i18n="randomApod">Random Discovery</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="loading-overlay hidden" id="apod-loading-overlay">
+                <div class="spinner"></div>
+                <span data-i18n="loadingApod">Discovering the cosmos...</span>
+            </div>
+            <div id="apod-info" class="info-text hidden"></div>
+        </div>
+
+        <!-- Featured APOD -->
+        <div class="apod-featured hidden" id="apod-featured">
+            <div class="apod-featured-image-container">
+                <img id="apod-featured-image" src="" alt="">
+                <div class="apod-featured-overlay">
+                    <span class="apod-badge" data-i18n="apodBadge">Picture of the Day</span>
+                </div>
+            </div>
+            <div class="apod-featured-content">
+                <h2 id="apod-featured-title"></h2>
+                <p id="apod-featured-date" class="apod-date"></p>
+                <p id="apod-featured-explanation" class="apod-explanation"></p>
+                <p id="apod-featured-copyright" class="apod-copyright"></p>
+                <a id="apod-featured-hd" href="" target="_blank" class="btn-primary apod-hd-btn" data-i18n="viewHd">View HD Image</a>
+            </div>
+        </div>
+
+        <!-- APOD History Grid -->
+        <div class="apod-history">
+            <h3 data-i18n="recentDiscoveries">Recent Discoveries</h3>
+            <div class="apod-grid" id="apod-grid"></div>
+        </div>
+    </main>
+
+    <!-- APOD Modal -->
+    <div class="modal hidden" id="apod-modal">
+        <div class="modal-content apod-modal-content">
+            <button class="modal-close" id="apod-modal-close">&times;</button>
+            <div class="apod-modal-image-container">
+                <img src="" alt="" id="apod-modal-image">
+            </div>
+            <div class="apod-modal-details">
+                <h2 id="apod-modal-title"></h2>
+                <p id="apod-modal-date" class="apod-date"></p>
+                <p id="apod-modal-explanation" class="apod-explanation"></p>
+                <p id="apod-modal-copyright" class="apod-copyright"></p>
+                <a id="apod-modal-hd" href="" target="_blank" class="btn-primary apod-hd-btn" data-i18n="viewHd">View HD Image</a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <p data-i18n="footerDiscovery">Data provided by <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank">NASA APOD API</a> | Built with JS, HTML & CSS</p>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="cache-api.js"></script>
+    <script src="i18n.js"></script>
+    <script type="module" src="space-discovery.js"></script>
+</body>
+</html>
