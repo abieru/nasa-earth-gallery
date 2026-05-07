@@ -1,3 +1,5 @@
+import { cachedFetch } from './cache-api.js';
+
 const API_BASE = 'https://api.nasa.gov/EPIC/api/natural';
 const IMG_BASE = 'https://epic.gsfc.nasa.gov/archive/natural';
 
@@ -83,7 +85,7 @@ async function loadLatest() {
     gallery.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE}?api_key=${NASA_API_KEY}`);
+        const response = await cachedFetch(`${API_BASE}?api_key=${NASA_API_KEY}`);
         
         if (!response.ok) {
             if (response.status === 403) {
@@ -128,7 +130,7 @@ async function loadByDate(date) {
     gallery.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE}/date/${date}?api_key=${NASA_API_KEY}`);
+        const response = await cachedFetch(`${API_BASE}/date/${date}?api_key=${NASA_API_KEY}`);
         
         if (!response.ok) {
             if (response.status === 403) {

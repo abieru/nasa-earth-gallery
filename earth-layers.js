@@ -11,6 +11,8 @@ const PROXY_URLS = [
     'https://corsproxy.io/?',
 ];
 
+const BLUE_MARBLE_URL = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
+
 // DOM Elements
 const canvasContainer = document.getElementById('canvas-container');
 const dateInput = document.getElementById('date-input');
@@ -24,34 +26,17 @@ const progressText = document.getElementById('progress-text');
 const infoDiv = document.getElementById('info');
 
 // State
-let scene, camera, renderer, controls, earthMesh, atmosphereMesh, stars;
+let scene, camera, renderer, controls, baseMesh, cloudMesh, atmosphereMesh, stars;
 let currentImages = [];
 let currentTextureIndex = 0;
 let isPlaying = false;
-let worldTextures = [];
+let cloudTextures = [];
 let timelapseInterval = null;
-let baseTextureImage = null;
+let baseTexture = null;
 const textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = 'anonymous';
 
-// Load the full-Earth base texture (Blue Marble) so there are never gaps
-function loadBaseTexture() {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            baseTextureImage = img;
-            resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-    });
-}
-
-// Initialize
 async function init() {
-    await loadBaseTexture();
-
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(
@@ -76,22 +61,35 @@ async function init() {
     controls.autoRotateSpeed = 0.5;
     controls.enableZoom = false;
 
-    // Lighting (Google Earth style: bright top, dark bottom)
+    // Lighting (Google Earth style)
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x000510, 1.4);
     hemiLight.position.set(0, 5, 0);
     scene.add(hemiLight);
 
-    // Earth Sphere
-    const earthGeometry = new THREE.SphereGeometry(1, 128, 128);
-    const earthMaterial = new THREE.MeshStandardMaterial({
-        map: null,
-        roughness: 0.55,
+    // Base Earth Sphere (Blue Marble)
+    const baseGeometry = new THREE.SphereGeometry(1, 128, 128);
+    baseTexture = await loadTextureAsync(BLUE_MARBLE_URL);
+    baseTexture.colorSpace = THREE.SRGBColorSpace;
+    const baseMaterial = new THREE.MeshStandardMaterial({
+        map: baseTexture,
+        roughness: 0.6,
         metalness: 0.05,
-        emissive: 0x050a1a,
-        emissiveIntensity: 0.4,
     });
-    earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
-    scene.add(earthMesh);
+    baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+    scene.add(baseMesh);
+
+    // Cloud Sphere (slightly larger, transparent)
+    const cloudGeometry = new THREE.SphereGeometry(1.015, 128, 128);
+    const cloudMaterial = new THREE.MeshStandardMaterial({
+        map: null,
+        transparent: true,
+        opacity: 0.88,
+        roughness: 1.0,
+        metalness: 0.0,
+        depthWrite: false,
+    });
+    cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    scene.add(cloudMesh);
 
     // Atmosphere Glow
     const atmosphereGeometry = new THREE.SphereGeometry(1.05, 64, 64);
@@ -140,10 +138,10 @@ async function init() {
         langSelect.value = currentLang;
         langSelect.addEventListener('change', (e) => {
             setLang(e.target.value);
-            updatePageText3d();
+            updatePageTextLayers();
         });
     }
-    updatePageText3d();
+    updatePageTextLayers();
 
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
@@ -200,7 +198,7 @@ async function loadLatest() {
         currentImages = data.slice(0, 4);
         currentTextureIndex = 0;
         updateImageCounter();
-        await loadAllTextures();
+        await loadAllCloudTextures();
         const date = data[0].date.split(' ')[0];
         dateInput.value = date;
     } catch (error) {
@@ -230,7 +228,7 @@ async function loadByDate(date) {
         currentImages = data.slice(0, 4);
         currentTextureIndex = 0;
         updateImageCounter();
-        await loadAllTextures();
+        await loadAllCloudTextures();
     } catch (error) {
         console.error('Error loading date:', error);
         showInfo(error.message || t('fetchError'));
@@ -262,9 +260,6 @@ function loadTextureAsync(url) {
         timeoutPromise,
     ]);
 }
-        );
-    });
-}
 
 function detectEarthRadius(srcData, imgW, imgH, cx, cy) {
     const threshold = 45;
@@ -293,11 +288,10 @@ function detectEarthRadius(srcData, imgW, imgH, cx, cy) {
 }
 
 /**
- * Projects the EPIC perspective image onto an equirectangular canvas.
- * Uses a robust source->destination pixel mapping so there are never empty triangles.
- * Falls back to a Blue-Marble base texture for areas EPIC does not cover.
+ * Projects EPIC image onto a transparent equirectangular canvas.
+ * Space pixels are fully transparent; Earth pixels are opaque with soft edges.
  */
-function generateWorldTexture(imageData, texture) {
+function generateCloudTexture(imageData, texture) {
     const W = 2048;
     const H = 1024;
     const canvas = document.createElement('canvas');
@@ -305,21 +299,13 @@ function generateWorldTexture(imageData, texture) {
     canvas.height = H;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    // 1. Start with the base texture (Blue Marble) so no area is ever blank
-    let baseData;
-    if (baseTextureImage) {
-        ctx.drawImage(baseTextureImage, 0, 0, W, H);
-    } else {
-        ctx.fillStyle = '#001020';
-        ctx.fillRect(0, 0, W, H);
-    }
-    baseData = ctx.getImageData(0, 0, W, H).data;
+    // Transparent background
+    ctx.clearRect(0, 0, W, H);
 
     const img = texture.image;
     const imgW = img.width;
     const imgH = img.height;
 
-    // 2. Read EPIC source pixels
     const tmp = document.createElement('canvas');
     tmp.width = imgW;
     tmp.height = imgH;
@@ -332,16 +318,14 @@ function generateWorldTexture(imageData, texture) {
         return new THREE.CanvasTexture(canvas);
     }
 
-    // 3. Detect Earth disc centre and radius
+    // Detect Earth disc centre
     let sumX = 0, sumY = 0, count = 0;
     const sampleStep = 4;
     for (let y = 0; y < imgH; y += sampleStep) {
         for (let x = 0; x < imgW; x += sampleStep) {
             const idx = (y * imgW + x) * 4;
             if (srcData[idx] + srcData[idx + 1] + srcData[idx + 2] > 30) {
-                sumX += x;
-                sumY += y;
-                count++;
+                sumX += x; sumY += y; count++;
             }
         }
     }
@@ -349,7 +333,7 @@ function generateWorldTexture(imageData, texture) {
     const cy = count > 0 ? sumY / count : imgH / 2;
     const earthRadiusPx = detectEarthRadius(srcData, imgW, imgH, cx, cy) || (Math.min(imgW, imgH) * 0.38);
 
-    // 4. Build camera coordinate frame from J2000 data (Three.js Y-up)
+    // Camera frame from J2000 (Three.js Y-up)
     const dPos = imageData.dscovr_j2000_position;
     const dist = Math.sqrt(dPos.x * dPos.x + dPos.y * dPos.y + dPos.z * dPos.z);
     const R_earth_km = 6371;
@@ -364,22 +348,20 @@ function generateWorldTexture(imageData, texture) {
     const scale = earthRadiusPx / sinAlpha;
     const sinAlphaSq = sinAlpha * sinAlpha;
 
-    // 5. Prepare output buffer (copy of base)
-    const out = new Uint8ClampedArray(baseData);
+    // Transparent output buffer
+    const out = new Uint8ClampedArray(W * H * 4);
 
-    // 6. Map every EPIC pixel to its correct lat/lon on the sphere
-    const pixelStep = 2; // performance / quality balance
+    const pixelStep = 2;
     for (let y = 0; y < imgH; y += pixelStep) {
         for (let x = 0; x < imgW; x += pixelStep) {
             const dx = (x - cx) / scale;
             const dy = (cy - y) / scale;
             const distPlaneSq = dx * dx + dy * dy;
 
-            if (distPlaneSq > sinAlphaSq) continue; // outside Earth disc (space)
+            if (distPlaneSq > sinAlphaSq) continue; // space
 
             const dz = Math.sqrt(Math.max(0, 1 - distPlaneSq));
 
-            // Unit vector of surface point in world coordinates (Three.js Y-up)
             const Px = dx * Xcam.x + dy * Ycam.x + dz * V.x;
             const Py = dx * Xcam.y + dy * Ycam.y + dz * V.y;
             const Pz = dx * Xcam.z + dy * Ycam.z + dz * V.z;
@@ -395,28 +377,43 @@ function generateWorldTexture(imageData, texture) {
             const srcIdx = (y * imgW + x) * 4;
             const dstIdx = (v * W + u) * 4;
 
-            // Soft feather at the limb so EPIC blends into the base texture
-            const limb = Math.sqrt(distPlaneSq) / sinAlpha;
-            const edgeFactor = limb > 0.82 ? Math.max(0, 1 - (limb - 0.82) / 0.18) : 1;
+            // Skip very dark pixels (deep space shadows)
+            const brightness = srcData[srcIdx] + srcData[srcIdx + 1] + srcData[srcIdx + 2];
+            if (brightness < 20) continue;
 
-            out[dstIdx]     = srcData[srcIdx]     * edgeFactor + baseData[dstIdx]     * (1 - edgeFactor);
-            out[dstIdx + 1] = srcData[srcIdx + 1] * edgeFactor + baseData[dstIdx + 1] * (1 - edgeFactor);
-            out[dstIdx + 2] = srcData[srcIdx + 2] * edgeFactor + baseData[dstIdx + 2] * (1 - edgeFactor);
-            // alpha stays 255 from baseData
+            // Soft edge feather
+            const limb = Math.sqrt(distPlaneSq) / sinAlpha;
+            const edgeFactor = limb > 0.80 ? Math.max(0, 1 - (limb - 0.80) / 0.20) : 1;
+
+            // Alpha blend: if pixel already has data, average it for smoothness
+            const existingAlpha = out[dstIdx + 3];
+            if (existingAlpha === 0) {
+                out[dstIdx]     = srcData[srcIdx];
+                out[dstIdx + 1] = srcData[srcIdx + 1];
+                out[dstIdx + 2] = srcData[srcIdx + 2];
+                out[dstIdx + 3] = Math.round(255 * edgeFactor);
+            } else {
+                const inv = 1 / 2;
+                out[dstIdx]     = (out[dstIdx]     + srcData[srcIdx])     * inv;
+                out[dstIdx + 1] = (out[dstIdx + 1] + srcData[srcIdx + 1]) * inv;
+                out[dstIdx + 2] = (out[dstIdx + 2] + srcData[srcIdx + 2]) * inv;
+                out[dstIdx + 3] = Math.max(out[dstIdx + 3], Math.round(255 * edgeFactor));
+            }
         }
     }
 
     ctx.putImageData(new ImageData(out, W, H), 0, 0);
-    return new THREE.CanvasTexture(canvas);
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
 }
 
-async function loadAllTextures() {
+async function loadAllCloudTextures() {
     if (currentImages.length === 0) return;
 
     const date = currentImages[0].date.split(' ')[0];
     updateProgressBar(0, currentImages.length);
 
-    worldTextures = [];
+    cloudTextures = [];
     let completed = 0;
 
     for (const item of currentImages) {
@@ -431,28 +428,28 @@ async function loadAllTextures() {
             }
         }
         if (texture) {
-            const worldTex = generateWorldTexture(item, texture);
-            worldTextures.push(worldTex);
+            const cloudTex = generateCloudTexture(item, texture);
+            cloudTextures.push(cloudTex);
         }
         completed++;
         updateProgressBar(completed, currentImages.length);
     }
 
-    if (worldTextures.length === 0) {
+    if (cloudTextures.length === 0) {
         showInfo(t('textureLoadError'));
         return;
     }
 
-    worldTextures.forEach(t => t.colorSpace = THREE.SRGBColorSpace);
-    earthMesh.material.map = worldTextures[0];
-    earthMesh.material.needsUpdate = true;
+    cloudTextures.forEach(t => t.colorSpace = THREE.SRGBColorSpace);
+    cloudMesh.material.map = cloudTextures[0];
+    cloudMesh.material.needsUpdate = true;
     currentTextureIndex = 0;
     updateImageCounter();
 
-    // Orient the globe so the photographed hemisphere faces the camera
+    // Rotate cloud sphere so EPIC's photographed hemisphere faces camera
     const dPos = currentImages[0].dscovr_j2000_position;
     const V = new THREE.Vector3(dPos.x, dPos.z, -dPos.y).normalize();
-    earthMesh.lookAt(earthMesh.position.clone().add(V));
+    cloudMesh.lookAt(cloudMesh.position.clone().add(V));
 }
 
 function toggleTimelapse() {
@@ -466,11 +463,11 @@ function startTimelapse() {
     controls.autoRotateSpeed = 2.0;
     playBtn.textContent = t('pauseTimelapse');
 
-    if (worldTextures.length > 1) {
+    if (cloudTextures.length > 1) {
         timelapseInterval = setInterval(() => {
-            currentTextureIndex = (currentTextureIndex + 1) % worldTextures.length;
-            earthMesh.material.map = worldTextures[currentTextureIndex];
-            earthMesh.material.needsUpdate = true;
+            currentTextureIndex = (currentTextureIndex + 1) % cloudTextures.length;
+            cloudMesh.material.map = cloudTextures[currentTextureIndex];
+            cloudMesh.material.needsUpdate = true;
             updateImageCounter();
         }, 1200);
     }
@@ -511,7 +508,7 @@ function hideInfo() {
     infoDiv.classList.add('hidden');
 }
 
-function updatePageText3d() {
+function updatePageTextLayers() {
     document.documentElement.lang = currentLang;
     document.querySelectorAll('[data-i18n]').forEach((el) => {
         const key = el.dataset.i18n;
@@ -519,7 +516,7 @@ function updatePageText3d() {
         if (text.includes('<')) el.innerHTML = text;
         else el.textContent = text;
     });
-    document.title = t('title3d');
+    document.title = t('titleLayers');
 }
 
 init();
