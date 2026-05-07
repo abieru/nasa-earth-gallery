@@ -4,7 +4,7 @@ FROM nginx:alpine
 RUN rm -rf /usr/share/nginx/html/*
 
 # Copy web assets explicitly
-COPY index.html style.css app.js i18n.js earth3d.html earth3d.js config.example.js /usr/share/nginx/html/
+COPY index.html style.css app.js i18n.js earth3d.html earth3d.js earth-layers.html earth-layers.js cache-api.js config.example.js /usr/share/nginx/html/
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
